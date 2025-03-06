@@ -111,7 +111,7 @@ chmod +x scripts/test_requests.zsh
 ./scripts/test_requests.zsh 0  # for text-only requests
 ```
 
-###Distributed Rate Limiting Strategy
+### Distributed Rate Limiting Strategy
 The project implements distributed rate limiting using Redis:
 
 - Atomic Operations with Lua Scripts:
