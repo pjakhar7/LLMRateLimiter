@@ -38,17 +38,22 @@ pip install -r requirements.txt
 ## Configuration
 Create a .env file in the project root with the following variables:
 
+```
 DATABASE_URL=postgresql://user:password@host:port/database
 REDIS_URL=redis://localhost:6379/0
 GEMINI_API_KEY=your_gemini_api_key
+```
+
 You can adjust the rate limits and semaphore timeout in the Config class (e.g., in app/config.py):
 
+```
 class Config:
     DATABASE_URL = os.getenv("DATABASE_URL")
     REDIS_URL = os.getenv("REDIS_URL")
     RATE_LIMITS = {"text_only": 5, "multi_modal": 3, "image_generation": 2}
     GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
     SEMAPHORE_TIMEOUT = 3
+```
 
 ## Usage
 ### Running the API Server
