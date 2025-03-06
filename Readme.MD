@@ -7,6 +7,9 @@ This project provides an API wrapper over large language models (LLMs) that enfo
 - **Distributed Concurrency Control:**  
   Uses Redis with Lua scripting for atomic semaphore operations, ensuring global concurrency limits across distributed service instances.
 
+- **Rate-Limited Query Queueing:**  
+  When concurrency limits are exceeded, requests are automatically pushed to a queue in Redis. Asynchronous workers later process these queued requests to ensure no query is dropped.
+
 - **Multiple Request Types:**  
   - **Text-only requests**
   - **Multi-modal requests:** Accepts text and file uploads.
