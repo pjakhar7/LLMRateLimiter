@@ -69,7 +69,7 @@ class SemaphoreManager:
         """Async task that resets Redis rate limits at fixed intervals."""
         try:
             while True:
-                await asyncio.sleep(30)  # Reset every 30 seconds
+                await asyncio.sleep(60)  # Reset every 30 seconds
                 await self.reset_semaphores()
         except asyncio.CancelledError:
             # Handle task cancellation gracefully

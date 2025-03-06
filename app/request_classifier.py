@@ -26,22 +26,18 @@ class RequestClassifier:
             return "image_generation", input_data
 
         if files:
-            # Read file content
             for file in files:
                 content = await file.read()                
-                # Get MIME type from content type or filename
                 mime_type = file.content_type
                 if not mime_type:
                     mime_type, _ = mimetypes.guess_type(file.filename)
                 
-                # Add file data to input
                 input_data["files"].append({
                     "filename": file.filename,
                     "type": mime_type or "application/octet-stream",
                     "data": content
                 })
                 
-                # Reset file pointer for potential future reads
                 await file.seek(0)
             
             return "multi_modal", input_data
@@ -51,10 +47,8 @@ class RequestClassifier:
     def is_requesting_image(self, text: str) -> bool:
         """
         Check if the text is requesting image generation.
-        
         Args:
-            text: Input text to check
-            
+            text: Input text to check 
         Returns:
             bool: True if text requests image generation
         """

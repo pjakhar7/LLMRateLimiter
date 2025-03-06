@@ -1,30 +1,61 @@
 #!/bin/zsh
-# test_api_calls.zsh
-# This script sends multiple concurrent API calls to test the rate limiter.
-# Ensure your Flask API is running on http://localhost:5080 before running this script.
 
-# Function to send a single request.
-function send_multi_modal_request {
-  echo "Sending request..."
-  curl -s -X POST "http://localhost:5080/submit" \
+MODE=$1
+NUM_REQUESTS=$2
+URL="http://localhost:8000/llm/submit"
+
+function send_text_only_request {
+  echo "Sending text-only request..."
+  curl -s -X POST "$URL" \
        -H "Content-Type: multipart/form-data" \
-       -F 'text="What is in this picture?"' \
-       -F 'file=@cat.png'
+       -F 'text="Hi, What are semaphores?"'
   echo "\n-----------------------------\n"
 }
 
-# Number of concurrent requests to simulate.
-NUM_REQUESTS=5
+function send_multi_modal_request {
+  echo "Sending request..."
+  curl -s -X POST "$URL" \
+       -H "Content-Type: multipart/form-data" \
+       -F 'text="What is in this picture?"' \
+       -F 'files=@cat.png'
+  echo "\n-----------------------------\n"
+}
 
-echo "Sending $NUM_REQUESTS concurrent requests..."
+function send_image_generation_request {
+  echo "Sending image generation request..."
+  curl -s -X POST "$URL" \
+       -H "Content-Type: multipart/form-data" \
+       -F 'text="Create a picture of a cat?"' 
+  echo "\n-----------------------------\n"
+}
 
-# Loop to send multiple requests concurrently.
-for i in {1..$NUM_REQUESTS}; do
-  echo $i
-  send_multi_modal_request &
-done
-
-# Wait for all background processes to complete.
-wait
+echo "Starting requests..."
+case $MODE in
+  0)
+    echo "Mode: Text-only requests"
+    for i in {1..$NUM_REQUESTS}; do
+      echo "Request $i:"
+      send_text_only_request
+    done
+    ;;
+  1)
+    echo "Mode: Multi-modal requests"
+    for i in {1..$NUM_REQUESTS}; do
+      echo "Request $i:"
+      send_multi_modal_request
+    done
+    ;;
+  2)
+    echo "Mode: Image generation requests"
+    for i in {1..$NUM_REQUESTS}; do
+      echo "Request $i:"
+      send_image_generation_request
+    done
+    ;;
+  *)
+    echo "Invalid mode: $MODE. Please use 0, 1, or 2."
+    exit 1
+    ;;
+esac
 
 echo "All requests complete."
