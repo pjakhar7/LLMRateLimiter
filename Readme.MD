@@ -21,3 +21,5 @@ curl -X POST "http://localhost:5080/submit" \
  curl -N "http://localhost:8000/llm/stream" \          
      -H "Content-Type: multipart/form-data" \
      -F 'text="What is modern family?"'
+
+curl -N "http://localhost:8000/llm/status/73c6a877-cde7-4092-9f26-3fd44b907686"  

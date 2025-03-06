@@ -27,7 +27,7 @@ class AsyncWorker:
     async def process_request(self, req_id, input_type, input_data):
         """Process a single request using the semaphore manager"""
         self.logger.info(f"Processing queued request {req_id} of type {input_type}")
-        
+        # time.sleep(10)
         try:
             # Try to acquire the semaphore with exponential backoff
             max_attempts = 5

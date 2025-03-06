@@ -2,21 +2,15 @@
 import logging
 import sys
 
-# Setup logging configuration to direct logs to stdout
-def custom_logging():
-    # Create a logger
-    logger = logging.getLogger()
-    logger.setLevel(logging.INFO)  # Set the default logging level to INFO
-
-    # Create a stream handler that writes log messages to stdout (console)
-    stream_handler = logging.StreamHandler(sys.stdout)
-    stream_handler.setLevel(logging.INFO)  # Set the level for the handler
-
-    # Create a log format (you can customize this)
-    log_format = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
-    stream_handler.setFormatter(log_format)
-
-    # Add the handler to the logger
-    logger.addHandler(stream_handler)
-
+def custom_logging(name: str = __name__) -> logging.Logger:
+    logger = logging.getLogger(name)
+    # Only add handlers if they haven't been added already.
+    if not logger.handlers:
+        logger.setLevel(logging.INFO)
+        stream_handler = logging.StreamHandler(sys.stdout)
+        formatter = logging.Formatter('%(asctime)s - %(levelname)s - %(message)s')
+        stream_handler.setFormatter(formatter)
+        logger.addHandler(stream_handler)
+        # Prevent log propagation to avoid duplicate logs from the root logger.
+        logger.propagate = False
     return logger
