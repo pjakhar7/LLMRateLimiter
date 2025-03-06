@@ -1,6 +1,7 @@
 import mimetypes
 import re
-import asyncio
+from fastapi import File, UploadFile
+from typing import List, Optional, Tuple, Dict, Any
 
 class RequestClassifier:
     IMAGE_GEN_KEYWORDS = [
@@ -8,30 +9,53 @@ class RequestClassifier:
         "design a picture", "make an image of", "visualize", "art of", "sketch"
     ]
 
-    async def classify_request(self, text_data, files):
-        """Async version of classify_request"""
-        # This method doesn't actually need to be async since it doesn't do I/O,
-        # but making it async for consistency with the rest of the codebase
-        return self.classify_request_sync(text_data, files)
+    async def classify_request(self, text_data: Optional[str], files: List[UploadFile] = File([])) -> Tuple[str, Dict[str, Any]]:
+        """
+        Asynchronously classify the request based on text and file.
         
-    def classify_request(self, text_data, files):
-        """Kept for backward compatibility"""
-        return self.classify_request_sync(text_data, files)
-
-    def classify_request_sync(self, text_data, files):
-        """Synchronous implementation of classify_request"""
+        Args:
+            text_data: Optional text input
+            file: Optional FastAPI UploadFile object
+        
+        Returns:
+            Tuple of (input_type, input_data)
+        """
         input_data = {"text": text_data, "files": []}
 
         if text_data and self.is_requesting_image(text_data):
-            return "image_generation", input_data  
+            return "image_generation", input_data
 
         if files:
+            # Read file content
             for file in files:
-                file_type, _ = mimetypes.guess_type(file.filename)
-                input_data["files"].append({"filename": file.filename, "type": file_type, "data": file.read()})
-            return "multi_modal", input_data  
-        
+                content = await file.read()                
+                # Get MIME type from content type or filename
+                mime_type = file.content_type
+                if not mime_type:
+                    mime_type, _ = mimetypes.guess_type(file.filename)
+                
+                # Add file data to input
+                input_data["files"].append({
+                    "filename": file.filename,
+                    "type": mime_type or "application/octet-stream",
+                    "data": content
+                })
+                
+                # Reset file pointer for potential future reads
+                await file.seek(0)
+            
+            return "multi_modal", input_data
+
         return "text_only", input_data
 
-    def is_requesting_image(self, text):
+    def is_requesting_image(self, text: str) -> bool:
+        """
+        Check if the text is requesting image generation.
+        
+        Args:
+            text: Input text to check
+            
+        Returns:
+            bool: True if text requests image generation
+        """
         return any(re.search(rf"\b{keyword}\b", text, re.IGNORECASE) for keyword in self.IMAGE_GEN_KEYWORDS)

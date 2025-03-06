@@ -4,11 +4,6 @@ import logging
 import sys
 import os
 import signal
-import time
-
-# Add the parent directory to the path so we can import app modules
-sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
 from app.worker import AsyncWorker
 from app.utils import custom_logging
 
@@ -22,7 +17,6 @@ async def shutdown(signal, loop):
     """Cleanup tasks tied to the service's shutdown."""
     logger.info(f"Received exit signal {signal.name}...")
     
-    # Cancel all running tasks
     tasks = [t for t in asyncio.all_tasks() if t is not asyncio.current_task()]
     
     logger.info(f"Cancelling {len(tasks)} outstanding tasks")
@@ -42,8 +36,9 @@ def handle_exception(loop, context):
 
 async def main():
     """Main entry point for the worker."""
-    # Setup signal handlers
     loop = asyncio.get_running_loop()
+    
+    # Setup signal handlers
     signals = (signal.SIGHUP, signal.SIGTERM, signal.SIGINT)
     for s in signals:
         loop.add_signal_handler(
@@ -65,19 +60,10 @@ async def main():
 
 if __name__ == "__main__":
     try:
-        # Create a new event loop and set it as the current one
-        loop = asyncio.new_event_loop()
-        asyncio.set_event_loop(loop)
-        
         logger.info("Initializing worker process")
-        loop.run_until_complete(main())
+        asyncio.run(main())
     except KeyboardInterrupt:
         logger.info("Worker process interrupted")
     except Exception as e:
         logger.error(f"Unhandled exception: {e}")
-        sys.exit(1)
-    finally:
-        logger.info("Worker process shutdown complete")
-        # Clean up the event loop
-        if 'loop' in locals() and loop.is_running():
-            loop.close() 
+        sys.exit(1) 

@@ -30,19 +30,19 @@ class RequestLogger:
             return {
                 "request_id": result[0],
                 "input_type": result[1],
-                "input_data": result[2],  # Stored as text
-                "status": result[3] if len(result) > 3 else "unknown",
-                "response": result[4] if len(result) > 4 else None,  # Stored as text
+                "input_data": result[2],
+                "status": result[3],
+                "response": result[4],
                 "created_at": result[5].isoformat() if result[5] else None,
             }
         return None
 
     async def delete_old_requests(self, days=30):
         """Cleanup old requests (default: older than 30 days)."""
-        delete_query = "DELETE FROM requests WHERE created_at < NOW() - INTERVAL '$1 days';"
-        await self._execute_query(delete_query, (days,))
+        delete_query = "DELETE FROM requests WHERE created_at < NOW() - INTERVAL %s DAY;"
+        await self._execute_query(delete_query, (days,), commit=True)
 
-    async def _execute_query(self, query, params=None, fetchone=False):
+    async def _execute_query(self, query, params=None, commit=False, fetchone=False):
         """Utility function for executing DB queries safely."""
         try:
             async with self.db_pool.acquire() as conn:

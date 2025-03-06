@@ -16,6 +16,7 @@ class GeminiProcessor(LLMProcessor):
         super().__init__(api_key)
         self.client = genai.Client(api_key=self.api_key)
 
+
     async def process_llm_request(self, input_type, input_data):
         model = "gemini-2.0-flash"
         if input_type == "image_generation":
@@ -28,47 +29,26 @@ class GeminiProcessor(LLMProcessor):
         
         if "files" in input_data:
             for file in input_data["files"]:
+                # print(type(file))
                 contents.append(types.Part.from_bytes(
                     mime_type=file["type"],
                     data=file["data"]
                 ))
 
-        # Run the API call in a thread pool to avoid blocking
+        # Run the synchronous API call in a thread pool
         response = await asyncio.to_thread(
             self._generate_content,
             model=model,
             contents=contents
         )
-        
-        # Process the response to extract both text and images
-        result = {
-            "text": response.text if hasattr(response, 'text') else "Processed something",
-            "images": []
-        }
-        
-        # Extract images from the response if they exist
-        if hasattr(response, 'parts'):
-            for part in response.parts:
-                if hasattr(part, 'inline_data') and part.inline_data:
-                    if part.inline_data.mime_type and part.inline_data.mime_type.startswith('image/'):
-                        result["images"].append({
-                            "type": part.inline_data.mime_type,
-                            "data": part.inline_data.data
-                        })
-        
-        return result
-    
+        # return "Processed a response successfully"
+        return response.text
+
     def _generate_content(self, model, contents):
-        """Helper method to call the synchronous API"""
-        try:
-            return self.client.models.generate_content(
-                model=model,
-                contents=contents
-            )
-        except Exception as e:
-            # Return a dummy response for testing
-            class DummyResponse:
-                text = "Processed something in async mode"
-            return DummyResponse()
+        """Synchronous helper method to call the API"""
+        return self.client.models.generate_content(
+            model=model,
+            contents=contents
+        )
     
     

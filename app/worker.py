@@ -1,4 +1,4 @@
-import aioredis
+import redis.asyncio as redis
 import asyncpg
 import asyncio
 import time
@@ -6,7 +6,6 @@ import random
 import json
 from app.config import Config
 from app.llm_processor import GeminiProcessor
-from app.request_logger import RequestLogger
 from app.semaphore_manager import SemaphoreManager
 from app.utils import custom_logging
 
@@ -16,16 +15,12 @@ class AsyncWorker:
         self.redis_client = None
         self.gemini_processor = GeminiProcessor(Config.GEMINI_API_KEY)
         self.logger = custom_logging()
-        self.request_logger = None
         self.semaphore_manager = None
         
     async def initialize(self):
         """Initialize database and Redis connections"""
         self.db_pool = await asyncpg.create_pool(Config.DATABASE_URL)
-        self.redis_client = await aioredis.from_url(Config.REDIS_URL, decode_responses=True)
-        self.request_logger = RequestLogger(self.db_pool)
-        
-        # Initialize the semaphore manager - same as used in routes.py
+        self.redis_client = await redis.from_url(Config.REDIS_URL, decode_responses=True)
         self.semaphore_manager = SemaphoreManager(Config.REDIS_URL, Config.RATE_LIMITS, 10)  # Longer timeout for worker
         await self.semaphore_manager.initialize()
         
@@ -48,7 +43,7 @@ class AsyncWorker:
                     response = await self.gemini_processor.process_llm_request(input_type, input_data)
                     
                     # Update the request status in the database
-                    await self.request_logger.save_request(req_id, input_type, input_data, response)
+                    await self.update_request_status(req_id, "completed", response)
                     
                     self.logger.info(f"Successfully processed request {req_id}")
                     
@@ -64,23 +59,19 @@ class AsyncWorker:
             
             # If we've exhausted all attempts, log an error and update the request status
             self.logger.error(f"Failed to acquire semaphore for request {req_id} after {max_attempts} attempts")
-            await self.request_logger.save_request(
-                req_id, 
-                input_type, 
-                input_data, 
-                {"error": "Failed to acquire resources after multiple attempts"}, 
-                "failed"
+            await self.update_request_status(
+                req_id,
+                "failed",
+                {"error": "Failed to acquire resources after multiple attempts"}
             )
             
         except Exception as e:
             self.logger.error(f"Error processing request {req_id}: {str(e)}")
             # Update with error status
-            await self.request_logger.save_request(
-                req_id, 
-                input_type, 
-                input_data,
-                {"error": str(e)}, 
-                "failed"
+            await self.update_request_status(
+                req_id,
+                "failed",
+                {"error": str(e)}
             )
             
             # Make sure to release the semaphore if we acquired it
@@ -88,6 +79,18 @@ class AsyncWorker:
                 await self.semaphore_manager.release_semaphore(input_type)
             except:
                 pass
+
+    async def update_request_status(self, req_id, status, response_data):
+        """Update request status and response in the database"""
+        async with self.db_pool.acquire() as conn:
+            await conn.execute(
+                """
+                UPDATE requests 
+                SET status=$1, response=$2, updated_at=NOW() 
+                WHERE id=$3
+                """,
+                status, str(response_data), req_id
+            )
 
     async def process_queue(self, input_type):
         """Process all requests in a queue"""
@@ -114,7 +117,8 @@ class AsyncWorker:
                 
                 # Convert input_data back to a dictionary if needed
                 try:
-                    input_data = eval(input_data_str)  # Simple approach, consider using json.loads with proper serialization
+                    import ast
+                    input_data = ast.literal_eval(input_data_str)  # Safer than eval
                 except:
                     input_data = input_data_str
                 
@@ -141,7 +145,15 @@ class AsyncWorker:
             # Sleep to avoid busy waiting
             await asyncio.sleep(1)
 
-# Entry point for the worker
+    async def cleanup(self):
+        """Cleanup resources"""
+        if self.db_pool:
+            await self.db_pool.close()
+        if self.redis_client:
+            await self.redis_client.close()
+        if self.semaphore_manager:
+            await self.semaphore_manager.cleanup()
+
 async def main():
     worker = AsyncWorker()
     await worker.run()

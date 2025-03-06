@@ -1,17 +1,20 @@
-from flask import Blueprint, request, jsonify
+from fastapi import FastAPI, File, UploadFile, Form, HTTPException, APIRouter
+from fastapi.responses import JSONResponse
+from typing import List, Optional
 import uuid
-import asyncio
 import asyncpg
 import json
+import redis.asyncio as redis
 from app.config import Config
 from app.request_logger import RequestLogger
 from app.llm_processor import GeminiProcessor
 from app.request_classifier import RequestClassifier
 from app.semaphore_manager import SemaphoreManager
 from app.utils import custom_logging
-from asgiref.sync import async_to_sync
+from pydantic import BaseModel
 
-api_blueprint = Blueprint("api", __name__)
+
+router = APIRouter()
 db_pool = None
 request_logger = None
 gemini_processor = GeminiProcessor(Config.GEMINI_API_KEY)
@@ -19,66 +22,63 @@ request_classifier = RequestClassifier()
 semaphore_manager = SemaphoreManager(Config.REDIS_URL, Config.RATE_LIMITS, 5)
 logger = custom_logging()
 redis_client = None
-app_loop = None
 
-# Initialize async resources
-async def init_async_resources():
-    global db_pool, request_logger, redis_client, app_loop
-    app_loop = asyncio.get_running_loop()
+@router.on_event("startup")
+async def startup_event():
+    """Initialize async resources when the application starts"""
+    global db_pool, request_logger, redis_client
+    
+    # Initialize database connection pool
     db_pool = await asyncpg.create_pool(Config.DATABASE_URL)
     request_logger = RequestLogger(db_pool)
-    await semaphore_manager.initialize()
     
-    # Initialize Redis client for queue operations
-    import aioredis
-    redis_client = await aioredis.from_url(Config.REDIS_URL, decode_responses=True)
+    # Initialize Redis client
+    redis_client = await redis.from_url(Config.REDIS_URL, decode_responses=True)
+    
+    # Initialize semaphore manager
+    await semaphore_manager.initialize()
 
-# Run initialization
-loop = asyncio.new_event_loop()
-asyncio.set_event_loop(loop)
-loop.run_until_complete(init_async_resources())
+@router.on_event("shutdown")
+async def shutdown_event():
+    """Clean up resources when the application shuts down"""
+    if db_pool:
+        await db_pool.close()
+    if redis_client:
+        await redis_client.close()
+    # Cleanup semaphore manager
+    await semaphore_manager.cleanup()
 
-# Helper function to run async code in the main application loop
-def run_async(coro):
-    if asyncio.get_event_loop() == app_loop:
-        return asyncio.run_coroutine_threadsafe(coro, app_loop).result()
-    else:
-        return async_to_sync(lambda: coro)()
+class TextRequest(BaseModel):
+    text: str
 
-@api_blueprint.route('/submit', methods=['POST'])
-def submit_request():
-    """Synchronous wrapper around the async implementation"""
-    return run_async(_submit_request())
-
-async def _submit_request():
-    """Async implementation of submit_request"""
-    files = request.files.getlist("file")
-    text_data = None
-    if request.content_type == "application/json":
-        text_data = request.json.get("text")
-    else:
-        text_data = request.form.get("text")
-    print(files)
-    if not files and not text_data:
-        return jsonify({"error": "Either text or a file must be provided"}), 400
+@router.post("/submit")
+async def submit_request(
+    text: Optional[str] = Form(None),
+    files: List[UploadFile] = File([])
+):
+    if not files and not text:
+        raise HTTPException(status_code=400, detail="Either text or a file must be provided")
     
     req_id = str(uuid.uuid4())
     
-    # Use the synchronous version to avoid await issues
-    input_type, input_data = request_classifier.classify_request_sync(text_data, files)
-    
+    # Convert FastAPI UploadFile to format expected by classifier
+
+    input_type, input_data = await request_classifier.classify_request(text, files)
+    logger.info(f"Processing request: {req_id} of type: {input_type}")
     try:
         # Try to acquire the semaphore
         await semaphore_manager.acquire_semaphore(input_type)
         
-        # If successful, process the request immediately
+        # try:
+            # If successful, process the request immediately
         response_data = await gemini_processor.process_llm_request(input_type, input_data)        
         await request_logger.save_request(req_id, input_type, input_data, response_data)
         
-        # Release the semaphore
-        await semaphore_manager.release_semaphore(input_type)
-        
-        return jsonify({"request_id": req_id, "response": response_data})
+        return {"request_id": req_id, "response": response_data}
+            
+        # finally:
+            # Always release the semaphore if we acquired it
+            # await semaphore_manager.release_semaphore(input_type)
         
     except TimeoutError:
         # If semaphore acquisition fails, queue the request for later processing
@@ -97,30 +97,46 @@ async def _submit_request():
         await redis_client.rpush(queue_key, json.dumps(request_data))
         
         # Return a response indicating the request is queued
-        return jsonify({
-            "request_id": req_id, 
-            "status": "queued",
-            "message": "Your request has been queued due to high demand. Check status later."
-        }), 202
+        return JSONResponse(
+            status_code=202,
+            content={
+                "request_id": req_id,
+                "status": "queued",
+                "message": "Your request has been queued due to high demand. Check status later."
+            }
+        )
 
     except Exception as e:
         logger.error(f"Error processing request {req_id}: {str(e)}")
-        return jsonify({"error": "Internal server error. Please try again later."}), 500
+        raise HTTPException(status_code=500, detail="Internal server error. Please try again later.")
 
-@api_blueprint.route('/status/<request_id>', methods=['GET'])
-def check_status(request_id):
-    """Synchronous wrapper around the async implementation"""
-    return run_async(_check_status(request_id))
-
-async def _check_status(request_id):
-    """Async implementation of check_status"""
+@router.get("/status/{request_id}")
+async def check_status(request_id: str):
+    """Endpoint to check the status of a request"""
     try:
         request_data = await request_logger.get_request(request_id)
         if not request_data:
-            return jsonify({"error": "Request not found"}), 404
+            raise HTTPException(status_code=404, detail="Request not found")
             
-        return jsonify(request_data)
+        return request_data
     except Exception as e:
         logger.error(f"Error checking status for request {request_id}: {str(e)}")
-        return jsonify({"error": "Internal server error"}), 500
+        raise HTTPException(status_code=500, detail="Internal server error")
+
+# Optional: Add health check endpoint
+@router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    try:
+        # Check database connection
+        async with db_pool.acquire() as conn:
+            await conn.execute("SELECT 1")
+        
+        # Check Redis connection
+        await redis_client.ping()
+        
+        return {"status": "healthy"}
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        raise HTTPException(status_code=503, detail="Service unhealthy")
 

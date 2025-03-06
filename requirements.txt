@@ -9,3 +9,6 @@ google-generativeai
 asyncpg
 aiosqlite
 Flask[async]
+fastapi
+python-multipart
+uvicorn
