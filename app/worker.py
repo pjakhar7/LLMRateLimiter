@@ -40,7 +40,7 @@ class AsyncWorker:
                     self.logger.info(f"Acquired semaphore for request {req_id} on attempt {attempt+1}")
                     
                     # Process the request
-                    response = await self.gemini_processor.process_llm_request(input_type, input_data)
+                    response = await self.gemini_processor.process_llm_request(input_data)
                     
                     # Update the request status in the database
                     await self.update_request_status(req_id, "completed", response)

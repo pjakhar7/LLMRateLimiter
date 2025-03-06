@@ -5,6 +5,19 @@ from google import genai
 import base64
 import asyncio
 
+def parse_request(input_data):
+        contents = []
+        if "text" in input_data:
+            contents.append(input_data["text"])
+        
+        if "files" in input_data:
+            for file in input_data["files"]:
+                contents.append(types.Part.from_bytes(
+                    mime_type=file["type"],
+                    data=file["data"]
+                ))
+        return contents
+
 class LLMProcessor:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -19,23 +32,10 @@ class GeminiProcessor(LLMProcessor):
         self.client = genai.Client(api_key=self.api_key)
 
 
-    async def process_llm_request(self, input_type, input_data):
+    async def process_llm_request(self, input_data):
         model = "gemini-2.0-flash"
-        # if input_type == "image_generation":
-        #     model = "gemini-pro-vision"
         
-        # Prepare the input content
-        contents = []
-        if "text" in input_data:
-            contents.append(input_data["text"])
-        
-        if "files" in input_data:
-            for file in input_data["files"]:
-                # print(type(file))
-                contents.append(types.Part.from_bytes(
-                    mime_type=file["type"],
-                    data=file["data"]
-                ))
+        contents = parse_request(input_data)
 
         # Run the synchronous API call in a thread pool
         response = await asyncio.to_thread(
@@ -43,7 +43,7 @@ class GeminiProcessor(LLMProcessor):
             model=model,
             contents=contents
         )
-        # time.sleep(3)
+        time.sleep(3)
         # return "Processed a response successfully"
         return response.text
 
@@ -78,5 +78,6 @@ class GeminiProcessor(LLMProcessor):
         for chunk in chunks:
             # Yield each chunk’s text followed by a newline.
             yield chunk.text + "\n"
+    
     
     

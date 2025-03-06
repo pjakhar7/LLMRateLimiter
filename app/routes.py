@@ -69,7 +69,7 @@ async def submit_request(
         
         try:
             # If successful, process the request immediately
-            response_data = await gemini_processor.process_llm_request(input_type, input_data)        
+            response_data = await gemini_processor.process_llm_request(input_data)        
             await request_logger.save_request(req_id, input_type, input_data, response_data)
             
             return {"request_id": req_id, "response": response_data}
@@ -123,6 +123,7 @@ async def check_status(request_id: str):
 
 @router.post("/stream")
 async def stream_response(text: Optional[str] = Form(None)):
+    """Endpoint for streaming content, supports text only for now"""
     async def generate_chunks():
         async for chunk in gemini_processor.stream_content(text):
             yield chunk
