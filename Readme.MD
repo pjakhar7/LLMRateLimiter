@@ -108,7 +108,7 @@ A sample shell script (scripts/test_requests.zsh) is provided to simulate concur
 Make it executable and run as follows:
 ```
 chmod +x scripts/test_requests.zsh
-./scripts/test_requests.zsh 0  # for text-only requests
+./scripts/test_requests.zsh 0 7 # for text-only requests
 ```
 
 ### Distributed Rate Limiting Strategy
