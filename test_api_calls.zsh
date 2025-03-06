@@ -8,7 +8,7 @@ function send_text_only_request {
   echo "Sending text-only request..."
   curl -s -X POST "$URL" \
        -H "Content-Type: multipart/form-data" \
-       -F 'text="Hi, What are semaphores?"'
+       -F 'text="Hi, What are semaphores? Give a short and concise answer"'
   echo "\n-----------------------------\n"
 }
 
@@ -25,7 +25,7 @@ function send_image_generation_request {
   echo "Sending image generation request..."
   curl -s -X POST "$URL" \
        -H "Content-Type: multipart/form-data" \
-       -F 'text="Create a picture of a cat?"' 
+       -F 'text="Draw a picture of a dog?"' 
   echo "\n-----------------------------\n"
 }
 
@@ -35,7 +35,7 @@ case $MODE in
     echo "Mode: Text-only requests"
     for i in {1..$NUM_REQUESTS}; do
       echo "Request $i:"
-      send_text_only_request
+      send_text_only_request &
     done
     ;;
   1)

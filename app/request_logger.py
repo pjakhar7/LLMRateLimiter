@@ -19,7 +19,7 @@ class RequestLogger:
         """
         await self._execute_query(
             insert_query,
-            (request_id, input_type, str(input_data), status, str(response_data), datetime.utcnow())
+            (request_id, input_type, str(input_data), status, str(response_data), datetime.now())
         )
 
     async def get_request(self, request_id):

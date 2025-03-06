@@ -17,3 +17,7 @@ curl -X POST "http://localhost:5080/submit" \
      -d '{
            "data": "Generate an image of a futuristic city with flying cars."
          }'
+
+ curl -N "http://localhost:8000/llm/stream" \          
+     -H "Content-Type: multipart/form-data" \
+     -F 'text="What is modern family?"'

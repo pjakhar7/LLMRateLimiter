@@ -1,3 +1,5 @@
+import time
+from typing import AsyncGenerator
 from google.genai import types 
 from google import genai
 import base64
@@ -19,8 +21,8 @@ class GeminiProcessor(LLMProcessor):
 
     async def process_llm_request(self, input_type, input_data):
         model = "gemini-2.0-flash"
-        if input_type == "image_generation":
-            model = "gemini-pro-vision"
+        # if input_type == "image_generation":
+        #     model = "gemini-pro-vision"
         
         # Prepare the input content
         contents = []
@@ -41,6 +43,7 @@ class GeminiProcessor(LLMProcessor):
             model=model,
             contents=contents
         )
+        # time.sleep(3)
         # return "Processed a response successfully"
         return response.text
 
@@ -50,5 +53,30 @@ class GeminiProcessor(LLMProcessor):
             model=model,
             contents=contents
         )
+    
+    def _generate_content_stream(self, prompt: str):
+        """
+        Synchronously call the LLM client's streaming generator.
+        """
+        model = "gemini-2.0-flash"
+        contents = [
+            prompt
+        ]
+        return self.client.models.generate_content_stream(
+            model=model,
+            contents=contents
+        )
+
+    async def stream_content(self, prompt: str) -> AsyncGenerator[str, None]:
+        """
+        Asynchronously stream content from the LLM by offloading the synchronous call
+        to a separate thread.
+        """
+        # Offload synchronous LLM call to a thread.
+        print(prompt)
+        chunks = await asyncio.to_thread(self._generate_content_stream, prompt)
+        for chunk in chunks:
+            # Yield each chunk’s text followed by a newline.
+            yield chunk.text + "\n"
     
     

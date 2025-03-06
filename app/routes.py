@@ -1,5 +1,5 @@
 from fastapi import FastAPI, File, UploadFile, Form, HTTPException, APIRouter
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, StreamingResponse
 from typing import List, Optional
 import uuid
 import asyncpg
@@ -18,8 +18,8 @@ router = APIRouter()
 db_pool = None
 request_logger = None
 gemini_processor = GeminiProcessor(Config.GEMINI_API_KEY)
-request_classifier = RequestClassifier()
-semaphore_manager = SemaphoreManager(Config.REDIS_URL, Config.RATE_LIMITS, 5)
+request_classifier = RequestClassifier(gemini_processor=gemini_processor)
+semaphore_manager = SemaphoreManager(Config.REDIS_URL, Config.RATE_LIMITS, Config.SEMAPHORE_TIMEOUT)
 logger = custom_logging()
 redis_client = None
 
@@ -61,24 +61,22 @@ async def submit_request(
     
     req_id = str(uuid.uuid4())
     
-    # Convert FastAPI UploadFile to format expected by classifier
-
     input_type, input_data = await request_classifier.classify_request(text, files)
     logger.info(f"Processing request: {req_id} of type: {input_type}")
     try:
         # Try to acquire the semaphore
         await semaphore_manager.acquire_semaphore(input_type)
         
-        # try:
+        try:
             # If successful, process the request immediately
-        response_data = await gemini_processor.process_llm_request(input_type, input_data)        
-        await request_logger.save_request(req_id, input_type, input_data, response_data)
-        
-        return {"request_id": req_id, "response": response_data}
+            response_data = await gemini_processor.process_llm_request(input_type, input_data)        
+            await request_logger.save_request(req_id, input_type, input_data, response_data)
             
-        # finally:
+            return {"request_id": req_id, "response": response_data}
+            
+        finally:
             # Always release the semaphore if we acquired it
-            # await semaphore_manager.release_semaphore(input_type)
+            await semaphore_manager.release_semaphore(input_type)
         
     except TimeoutError:
         # If semaphore acquisition fails, queue the request for later processing
@@ -123,7 +121,14 @@ async def check_status(request_id: str):
         logger.error(f"Error checking status for request {request_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Internal server error")
 
-# Optional: Add health check endpoint
+@router.post("/stream")
+async def stream_response(text: Optional[str] = Form(None)):
+    async def generate_chunks():
+        async for chunk in gemini_processor.stream_content(text):
+            yield chunk
+
+    return StreamingResponse(generate_chunks(), media_type="text/plain")
+
 @router.get("/health")
 async def health_check():
     """Health check endpoint"""
