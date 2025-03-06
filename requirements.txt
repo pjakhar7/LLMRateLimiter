@@ -1,0 +1,11 @@
+flask
+psycopg2-binary
+redis
+aioredis
+pillow
+pymupdf
+fitz
+google-generativeai
+asyncpg
+aiosqlite
+Flask[async]
