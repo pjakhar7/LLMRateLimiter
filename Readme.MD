@@ -73,7 +73,7 @@ Fetch response for a previous request using request_id
 #### POST /stream:
 Streams responses from the LLM based on the provided prompt 
 
-###Example Curl Commands
+Example Curl Commands
 Text-only Request:
 curl -X POST "http://localhost:5080/submit" \
      -H "Content-Type: application/json" \
@@ -111,7 +111,7 @@ chmod +x scripts/test_requests.zsh
 ./scripts/test_requests.zsh 0  # for text-only requests
 ```
 
-####Distributed Rate Limiting Strategy
+###Distributed Rate Limiting Strategy
 The project implements distributed rate limiting using Redis:
 
 - Atomic Operations with Lua Scripts:
