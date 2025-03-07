@@ -124,10 +124,37 @@ async def check_status(request_id: str):
 @router.post("/stream")
 async def stream_response(text: Optional[str] = Form(None)):
     """Endpoint for streaming content, supports text only for now"""
-    async def generate_chunks():
-        async for chunk in gemini_processor.stream_content(text):
-            yield chunk
-
+    if not text:
+        raise HTTPException(status_code=400, detail="Text must be provided")
+    
+    req_id = str(uuid.uuid4())
+    
+    input_type, input_data = await request_classifier.classify_request(text, [])
+    logger.info(f"Processing request: {req_id} of type: {input_type}")
+    try:
+        # Try to acquire the semaphore
+        await semaphore_manager.acquire_semaphore(input_type)
+        try:
+            async def generate_chunks():
+                async for chunk in gemini_processor.stream_content(text):
+                    yield chunk
+        finally:
+            # Always release the semaphore if we acquired it
+            await semaphore_manager.release_semaphore(input_type)
+    except TimeoutError:
+        # If semaphore acquisition fails, request has been rate limited
+        logger.warning(f"Request {req_id} rate-limited")
+        return JSONResponse(
+            status_code=429,
+            content={
+                "request_id": req_id,
+                "status": "rate_limited",
+                "message": "Your request has been rate limited. Please try again after some time."
+            }
+        )
+    except Exception as e:
+        logger.error(f"Error checking status for request {req_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error")
     return StreamingResponse(generate_chunks(), media_type="text/plain")
 
 @router.get("/health")
