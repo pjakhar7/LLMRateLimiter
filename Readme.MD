@@ -63,7 +63,8 @@ class Config:
 ### Running the API Server
 Start the FastAPI application and worker:
 
-```python3 run_app.py
+```
+   python3 run_app.py
    python3 run_worker.py
 ```
 
