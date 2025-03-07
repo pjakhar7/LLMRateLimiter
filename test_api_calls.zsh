@@ -42,14 +42,14 @@ case $MODE in
     echo "Mode: Multi-modal requests"
     for i in {1..$NUM_REQUESTS}; do
       echo "Request $i:"
-      send_multi_modal_request
+      send_multi_modal_request &
     done
     ;;
   2)
     echo "Mode: Image generation requests"
     for i in {1..$NUM_REQUESTS}; do
       echo "Request $i:"
-      send_image_generation_request
+      send_image_generation_request &
     done
     ;;
   *)

@@ -43,7 +43,7 @@ class GeminiProcessor(LLMProcessor):
             model=model,
             contents=contents
         )
-        time.sleep(1)
+        time.sleep(2)
         # return "Processed a response successfully"
         return response.text
 
