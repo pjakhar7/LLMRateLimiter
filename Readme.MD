@@ -113,12 +113,12 @@ Fetching Response using request_id
 curl -N "http://localhost:8000/llm/status/73c6a877-cde7-4092-9f26-3fd44b907686"  
 
 ## Testing
-A sample shell script (scripts/test_requests.zsh) is provided to simulate concurrent API calls. The script accepts two argument to select the request type (0 for text-only, 1 for multi-modal, 2 for image generation) and number of requests to send of that type 
+A sample shell script (test_api_calls.zsh) is provided to simulate concurrent API calls. The script accepts two argument to select the request type (0 for text-only, 1 for multi-modal, 2 for image generation) and number of requests to send of that type 
 
 Make it executable and run as follows:
 ```
-chmod +x scripts/test_requests.zsh
-./scripts/test_requests.zsh 0 7 # for text-only requests
+chmod +x scripts/test_api_calls.zsh
+./scripts/test_api_calls.zsh 0 7 # for text-only requests
 ```
 
 ### Distributed Rate Limiting Strategy
