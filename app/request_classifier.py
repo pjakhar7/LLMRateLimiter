@@ -65,10 +65,10 @@ class RequestClassifier:
             f"Text: {text}\n\n"
             "Answer:"
         )
-        return any(
-                re.search(rf"\b{re.escape(keyword)}\b", text, re.IGNORECASE)
-                for keyword in self.IMAGE_GEN_KEYWORDS
-            )
+        # return any(
+        #         re.search(rf"\b{re.escape(keyword)}\b", text, re.IGNORECASE)
+        #         for keyword in self.IMAGE_GEN_KEYWORDS
+        #     )
         try:
             # Call the LLM processor 
             response = await self.gemini_processor.process_llm_request({"text": prompt})

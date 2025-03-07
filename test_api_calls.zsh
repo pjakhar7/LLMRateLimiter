@@ -25,7 +25,7 @@ function send_image_generation_request {
   echo "Sending image generation request..."
   curl -s -X POST "$URL" \
        -H "Content-Type: multipart/form-data" \
-       -F 'text="Draw a picture of a dog?"' 
+       -F 'text="Draw a picture of a circle?"' 
   echo "\n-----------------------------\n"
 }
 
