@@ -14,6 +14,7 @@ This project provides an API wrapper over large language models (LLMs) that enfo
   - **Text-only requests**
   - **Multi-modal requests:** Accepts text and file uploads.
   - **Image generation requests:** Can be triggered using an image file or an image URI.
+Note: Image generation requests are not supported on free tier of Gemini
 
 - **Asynchronous Processing:**  
   Built on FastAPI with asynchronous endpoints and non-blocking operations (using `asyncio` and `asyncio.to_thread`).
