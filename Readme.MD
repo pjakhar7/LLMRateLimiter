@@ -61,7 +61,7 @@ class Config:
 
 ## Usage
 ### Running the API Server
-Start the FastAPI application with Uvicorn:
+Start the FastAPI application and worker:
 
 ```python3 run_app.py
    python3 run_worker.py
@@ -70,16 +70,16 @@ Start the FastAPI application with Uvicorn:
 Your endpoints will be available at http://localhost:8000.
 
 ## API Endpoints
-#### POST /submit:
+#### POST llm/submit:
 Submit a request to the LLM. Accepts multipart form data with:
 
  - text: The prompt text.
  - files: (Optional) File upload for multi-modal requests.
 
-#### GET /status/{request_id}
+#### GET llm/status/{request_id}
 Fetch response for a previous request using request_id
 
-#### POST /stream:
+#### POST llm/stream:
 Streams responses from the LLM based on the provided prompt 
 
 Example Curl Commands
