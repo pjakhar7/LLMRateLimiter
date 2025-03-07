@@ -85,29 +85,25 @@ Streams responses from the LLM based on the provided prompt
 
 Example Curl Commands
 Text-only Request:
-curl -X POST "http://localhost:5080/submit" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "data": "Explain the importance of cybersecurity in modern businesses."
-         }'
+curl -s -X POST "http://localhost:8000/llm/submit" \
+       -H "Content-Type: multipart/form-data" \
+       -F 'text="Hi, What are semaphores? Give a short and concise answer"'
 
 Multi-modal Request:
-curl -X POST "http://localhost:5080/submit" \
-     -H "Content-Type: multipart/form-data" \
-     -F "data=Describe this document in detail" \
-     -F "file=@/path/to/document.pdf"
+curl -s -X POST "http://localhost:8000/llm/submit" \
+       -H "Content-Type: multipart/form-data" \
+       -F 'text="What is in this picture?"' \
+       -F 'files=@cat.png'
 
 Image-generation Request:
-curl -X POST "http://localhost:5080/submit" \
-     -H "Content-Type: application/json" \
-     -d '{
-           "data": "Generate an image of a futuristic city with flying cars."
-         }'
+curl -s -X POST "http://localhost:8000/llm/submit" \
+       -H "Content-Type: multipart/form-data" \
+       -F 'text="Draw a picture of a circle?"' 
 
 Streaming Request:
- curl -N "http://localhost:8000/llm/stream" \          
+ curl -N "http://localhost:8000/llm/stream" \           
      -H "Content-Type: multipart/form-data" \
-     -F 'text="What is modern family?"'
+     -F 'text="Who is donald trump?"'
 
 Fetching Response using request_id
 curl -N "http://localhost:8000/llm/status/73c6a877-cde7-4092-9f26-3fd44b907686"  
